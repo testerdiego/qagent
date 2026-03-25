@@ -7,9 +7,9 @@ from services.groq_client import get_groq_client
 # import streamlit as st
 
 # Modelos por IA
-MODEL_ARCHITECT = "gpt-oss-120b"  # Criativo/robusto
-MODEL_AUDITOR = "llama-3.3-70b"    # Lógico/determinístico
-MODEL_EDITOR = "llama-4-scout"      # Rápido para formatação
+MODEL_ARCHITECT = "openai/gpt-oss-120b"  # Criativo/robusto
+MODEL_AUDITOR = "llama-3.3-70b-versatile"    # Lógico/determinístico
+MODEL_EDITOR = "meta-llama/llama-4-scout-17b-16e-instruct"      # Rápido para formatação
 
 # ===============================
 # IA1 - QA Architect
