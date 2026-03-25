@@ -18,26 +18,13 @@ with st.sidebar:
     
     # Seleção direta da ferramenta de QA
     qa_tools = st.selectbox(
-        "Selecione a funcionalidade de QA:",
+        O que vamos construir hoje?",
         [
-            "Gerar Requisitos Testáveis 📝",
-            "Gerar Critérios de Aceitação ✅",
-            "Gerar Análise de Risco ⚠️",
-            "Gerar Cenários de Teste 📋",
-            "Gerar Casos de Teste 🧩",
-            "Gerar Testes BDD 🛠️",
-            "Gerar Tabelas de Decisão 🔢",
-            "Gerar Valores de Teste 🎯",
-            "Gerar Dados de Teste 🧪",
-            "Gerar Scripts de Setup 🖥️",
-            "Gerar Scripts de Teste Automatizados 💻",
-            "Gerar Testes Exploratórios 🔍",
-            "Gerar Testes de Regressão 🔁",
-            "Gerar Templates de Defeito 🐞",
-            "Gerar Rastreabilidade 🗂️",
-            "Gerar Relatórios de Teste 📊",
-            "Gerar Métricas de Qualidade 📈",
-            "Fluxo Guiado Completo 🚀"
+            "Planejamento: Requisitos e Riscos 📝",
+            "Design: Cenários e Casos de Teste 🧩",
+            "Automação: BDD e Scripts 💻",
+            "Execução: Dados e Setup de Ambiente 🧪",
+            "Relatórios: Bugs e Métricas de Qualidade 📊"
         ]
     )
         
