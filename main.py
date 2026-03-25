@@ -2,21 +2,21 @@ import streamlit as st
 from services.groq_client import get_groq_client
 from agents.qa_agent import process_full_qa_flow
 
-# Configura a página do Streamlit
+# 1. Configuração da Página
 st.set_page_config(
-    page_title="AI QA Assistant",
-    page_icon="🧪",
+    page_title="AI Artifact Creator",
+    page_icon="🛠️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Conteúdo da barra lateral
+# 2. Barra Lateral (Configurações de Contexto)
 with st.sidebar:
-    st.title("🧪 AI QA Assistant")
-    st.markdown("Especialista em QA para geração de artefatos técnicos e automação.")
+    st.title("🛠️ AI Artifact Creator")
+    st.markdown("Assistente inteligente para criação de artefatos de qualidade.")
     st.markdown("---")
     
-    # Seleção direta da ferramenta de QA
+    # Menu Consolidado (5 Categorias Principais)
     qa_tools = st.selectbox(
         "O que vamos construir hoje?",
         [
@@ -27,58 +27,79 @@ with st.sidebar:
             "Relatórios: Bugs e Métricas de Qualidade 📊"
         ]
     )
-        
-    # Variáveis de suporte para automação
-    linguagem = None
-    framework = None
-    if qa_tools in ["Gerar Scripts de Teste Automatizados 💻", "Gerar Scripts de Setup 🖥️"]:
-        linguagem = st.selectbox("Linguagem/Stack", ["Python 🐍", "JavaScript ✨", "C# 🎵", "Java ☕"])
-        framework = st.text_input("Framework (Ex: Selenium, Playwright, Cypress)")
+    
+    st.markdown("### 🛠️ Stack Técnica")
+    # Agora a stack é solicitada de forma global para dar contexto à IA
+    linguagem = st.selectbox(
+        "Linguagem Principal:", 
+        ["Python 🐍", "JavaScript ✨", "C# 🎵", "Java ☕", "TypeScript 🟦", "Outra/Não aplicável"]
+    )
+    
+    framework = st.text_input(
+        "Framework / Biblioteca:", 
+        placeholder="Ex: Playwright, Cypress, Selenium, JUnit..."
+    )
 
     st.markdown("---")
-    st.markdown("IA pode cometer erros. Verifique os artefatos.")
-    st.link_button("✉️ Suporte Técnico", "mailto:EMAIL")
+    st.caption("⚠️ A IA precisa de detalhes técnicos para não ser vaga. Seja específico no chat.")
+    
+    # Link de suporte
+    st.link_button("✉️ Suporte Técnico", "mailto:suporte@exemplo.com")
 
-# Interface Principal
+# 3. Interface Principal (Chat)
 st.title("Assistente Especialista em QA")
-st.caption(f"Foco: {qa_tools}")
+st.info(f"**Modo Ativo:** {qa_tools} | **Stack:** {linguagem} + {framework if framework else 'Nenhum'}")
 
-# Histórico de chat
+# Inicializa o histórico de mensagens
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Exibe o histórico de mensagens
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Inicialização do cliente Groq
+# 4. Lógica de Execução
 try:
     client = get_groq_client()
 except Exception as e:
-    st.sidebar.error(f"Erro ao inicializar o cliente Groq: {e}")
+    st.sidebar.error(f"Erro ao conectar com a API: {e}")
     st.stop()
 
-# Input do usuário
-if prompt := st.chat_input("Descreva o requisito ou funcionalidade para testar..."):
+# Captura o Input do Usuário
+if prompt := st.chat_input("Descreva a funcionalidade ou o que você deseja criar..."):
     
+    # Adiciona mensagem do usuário ao histórico
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Processamento exclusivo via Agente de QA
+    # Processamento com o Agente de QA
     with st.chat_message("assistant"):
-        with st.spinner("O Arquiteto, Auditor e Editor estão trabalhando..."):
-            try:
-                # Chamada do fluxo orquestrado de QA
-                ai_resposta = process_full_qa_flow(
-                    funcao=qa_tools,
-                    detalhes=prompt,
-                    linguagem=linguagem,
-                    framework=framework
-                )
-                
-                st.markdown(ai_resposta)
-                st.session_state.messages.append({"role": "assistant", "content": ai_resposta})
+        # Mensagem de status para o usuário
+        status_placeholder = st.empty()
+        status_placeholder.info("🤖 Analisando contexto e consultando especialistas...")
+        
+        try:
+            # Chama o orquestrador (Architect -> Auditor -> Editor)
+            # Passamos linguagem e framework explicitamente para o agente
+            ai_resposta = process_full_qa_flow(
+                funcao=qa_tools,
+                detalhes=prompt,
+                linguagem=linguagem,
+                framework=framework
+            )
+            
+            status_placeholder.empty()
+            st.markdown(ai_resposta)
+            
+            # Adiciona resposta da IA ao histórico
+            st.session_state.messages.append({"role": "assistant", "content": ai_resposta})
 
-            except Exception as e:
-                st.error(f"Ocorreu um erro no processamento: {e}")
+        except Exception as e:
+            status_placeholder.empty()
+            st.error(f"Ocorreu um erro técnico: {e}")
+
+# Rodapé decorativo
+st.markdown("---")
+st.caption("Focado em ISTQB, ISO/IEC 29119 e boas práticas de engenharia de software.")
