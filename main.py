@@ -18,7 +18,7 @@ with st.sidebar:
     
     # Seleção direta da ferramenta de QA
     qa_tools = st.selectbox(
-        O que vamos construir hoje?",
+        "O que vamos construir hoje?",
         [
             "Planejamento: Requisitos e Riscos 📝",
             "Design: Cenários e Casos de Teste 🧩",
