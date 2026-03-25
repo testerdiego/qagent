@@ -1,0 +1,112 @@
+# agents/qa_agent.py
+
+from prompts.qa_prompt_architect import IA1_QA_ARCHITECT_PROMPT
+from prompts.qa_prompt_auditor import IA2_QA_AUDITOR_PROMPT
+from prompts.qa_prompt_editor import IA3_QA_EDITOR_PROMPT
+from services.groq_client import get_groq_client
+# import streamlit as st
+
+# Modelos por IA
+MODEL_ARCHITECT = "llama-3.3-70b-versatile"  # Criativo/robusto
+MODEL_AUDITOR = "llama-3.3-70b-versatile"    # Lógico/determinístico
+MODEL_EDITOR = "llama-3.1-8b-instant"      # Rápido para formatação
+
+# ===============================
+# IA1 - QA Architect
+# ===============================
+def run_ia1_qa_architect(funcao, detalhes, linguagem=None, framework=None):
+    client = get_groq_client()
+
+    prompt_final = f"{IA1_QA_ARCHITECT_PROMPT}\n\n"
+    prompt_final += f"--- EXECUÇÃO ATUAL ---\n"
+    prompt_final += f"[FUNCIONALIDADE SELECIONADA]: {funcao}\n"
+    prompt_final += f"[CONTEXTO DO USUÁRIO]: {detalhes}\n"
+    if linguagem: prompt_final += f"[LINGUAGEM]: {linguagem}\n"
+    if framework: prompt_final += f"[FRAMEWORK]: {framework}\n"
+
+    response = client.chat.completions.create(
+        messages=[{"role": "system", "content": prompt_final}],
+        model=MODEL_ARCHITECT,
+        temperature=0.7,
+        max_tokens=1800
+    )
+
+    return {
+        "ID_FUNCAO": funcao,
+        "CONTEUDO_BRUTO": response.choices[0].message.content,
+        "NORMA_APLICADA": "ISTQB / ISO/IEC 29119"
+    }
+
+# ===============================
+# IA2 - QA Auditor
+# ===============================
+def run_ia2_qa_auditor(architect_output):
+    client = get_groq_client()
+
+    prompt_final = f"{IA2_QA_AUDITOR_PROMPT}\n\n"
+    prompt_final += f"--- CONTEÚDO PARA AUDITORIA ---\n"
+    prompt_final += f"Função: {architect_output['ID_FUNCAO']}\n"
+    prompt_final += f"Conteúdo: {architect_output['CONTEUDO_BRUTO']}\n"
+
+    response = client.chat.completions.create(
+        messages=[{"role": "system", "content": prompt_final}],
+        model=MODEL_AUDITOR,
+        temperature=0.1,
+        max_tokens=1000
+    )
+
+    return response.choices[0].message.content
+
+# ===============================
+# IA3 - QA Editor
+# ===============================
+def run_ia3_qa_editor(architect_output, auditor_output):
+    client = get_groq_client()
+
+    prompt_final = f"{IA3_QA_EDITOR_PROMPT}\n\n"
+    prompt_final += f"--- INPUTS DE TRABALHO ---\n"
+    prompt_final += f"RASCUNHO DO ARQUITETO: {architect_output['CONTEUDO_BRUTO']}\n"
+    prompt_final += f"CRÍTICAS DO AUDITOR: {auditor_output}\n"
+
+    response = client.chat.completions.create(
+        messages=[{"role": "system", "content": prompt_final}],
+        model=MODEL_EDITOR,
+        temperature=0.5,
+        max_tokens=1200
+    )
+
+    return response.choices[0].message.content
+
+# ==========================================
+# ORQUESTRADOR PARA STREAMLIT
+# ==========================================
+def process_full_qa_flow(funcao, detalhes, linguagem=None, framework=None, status_callback=None):
+    """
+    Coordena o fluxo completo QA (Architect -> Auditor -> Editor).
+    Recebe todas as informações do main e retorna resposta final pronta.
+    Exibe mensagens de status via status_callback, se fornecido.
+    """
+    try:
+        # Se a função exigir código (Scripts de Setup ou Automação), avisa usuário
+        if funcao in ["Gerar Scripts de Teste Automatizados 💻", "Gerar Scripts de Setup 🖥️"] and status_callback:
+            status_callback("Solicitando Stack/Framework do usuário...")
+
+        # Passo 1: Architect
+        if status_callback:
+            status_callback(f"Gerando rascunho para {funcao}...")
+        rascunho = run_ia1_qa_architect(funcao, detalhes, linguagem, framework)
+
+        # Passo 2: Auditor
+        if status_callback:
+            status_callback("Auditando conteúdo técnico...")
+        criticas = run_ia2_qa_auditor(rascunho)
+
+        # Passo 3: Editor
+        if status_callback:
+            status_callback("Formatando e polindo resposta...")
+        resultado_final = run_ia3_qa_editor(rascunho, criticas)
+
+        return resultado_final
+
+    except Exception as e:
+        return f"❌ Erro no processamento de QA: {str(e)}"
