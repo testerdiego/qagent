@@ -17,23 +17,19 @@ MODEL_EDITOR = "meta-llama/llama-4-scout-17b-16e-instruct"      # Rápido para f
 def run_ia1_qa_architect(funcao, detalhes, linguagem=None, framework=None):
     client = get_groq_client()
 
-    # AJUSTE PARA FUNCIONAR: Injetando as variáveis na string do prompt
-    # O .format() substitui as chaves {linguagem}, {framework} e {detalhes} no seu IA1_QA_ARCHITECT_PROMPT
-    prompt_final = IA1_QA_ARCHITECT_PROMPT.format(
-        linguagem=linguagem,
-        framework=framework,
-        detalhes=detalhes
-    )
+    # USAMOS F-STRING PARA EVITAR O ERRO DE KEYERROR DO .FORMAT()
+    # Isso injeta os dados sem mexer nas outras chaves do seu prompt
+    prompt_final = f"""
+    {IA1_QA_ARCHITECT_PROMPT}
     
-    prompt_final += f"\n\n--- EXECUÇÃO ATUAL ---\n"
-    prompt_final += f"[FUNCIONALIDADE SELECIONADA]: {funcao}\n"
-    prompt_final += f"[CONTEXTO DO USUÁRIO]: {detalhes}\n"
-    if linguagem: prompt_final += f"[LINGUAGEM OBRIGATÓRIA]: {linguagem}\n"
-    if framework: prompt_final += f"[FRAMEWORK OBRIGATÓRIO]: {framework}\n"
+    --- EXECUÇÃO OBRIGATÓRIA ---
+    LINGUAGEM: {linguagem}
+    FRAMEWORK: {framework}
+    FUNCIONALIDADE: {detalhes}
+    CATEGORIA: {funcao}
     
-    # Se for Automação, força o BDD no final do prompt do sistema
-    if "Automação" in funcao:
-        prompt_final += "\n[REGRA]: Gere primeiro o BDD (Gherkin) e depois o script técnico.\n"
+    REGRA: Se for Automação, gere o BDD (Gherkin) e o Código em {linguagem}.
+    """
 
     response = client.chat.completions.create(
         messages=[{"role": "system", "content": prompt_final}],
@@ -46,8 +42,7 @@ def run_ia1_qa_architect(funcao, detalhes, linguagem=None, framework=None):
         "ID_FUNCAO": funcao,
         "LINGUAGEM": linguagem,
         "FRAMEWORK": framework,
-        "CONTEUDO_BRUTO": response.choices[0].message.content,
-        "NORMA_APLICADA": "ISTQB / ISO/IEC 29119"
+        "CONTEUDO_BRUTO": response.choices[0].message.content
     }
 
 # ===============================
@@ -56,13 +51,16 @@ def run_ia1_qa_architect(funcao, detalhes, linguagem=None, framework=None):
 def run_ia2_qa_auditor(architect_output):
     client = get_groq_client()
 
-    prompt_final = f"{IA2_QA_AUDITOR_PROMPT}\n\n"
-    prompt_final += f"--- VALIDAÇÃO DE STACK ---\n"
-    prompt_final += f"A entrega DEVE ser em: {architect_output.get('LINGUAGEM')} com {architect_output.get('FRAMEWORK')}.\n"
-    prompt_final += f"Se houver BDD ausente em Automação, aponte erro.\n"
-    prompt_final += f"--- CONTEÚDO PARA AUDITORIA ---\n"
-    prompt_final += f"Função: {architect_output['ID_FUNCAO']}\n"
-    prompt_final += f"Conteúdo: {architect_output['CONTEUDO_BRUTO']}\n"
+    prompt_final = f"""
+    {IA2_QA_AUDITOR_PROMPT}
+    
+    --- VALIDAÇÃO TÉCNICA ---
+    A stack DEVE ser: {architect_output['LINGUAGEM']} + {architect_output['FRAMEWORK']}.
+    O conteúdo DEVE conter BDD se for Automação.
+    
+    CONTEÚDO PARA ANALISAR:
+    {architect_output['CONTEUDO_BRUTO']}
+    """
 
     response = client.chat.completions.create(
         messages=[{"role": "system", "content": prompt_final}],
@@ -79,15 +77,16 @@ def run_ia2_qa_auditor(architect_output):
 def run_ia3_qa_editor(architect_output, auditor_output):
     client = get_groq_client()
 
-    # O Editor também precisa dos dados da stack para formatar corretamente
-    prompt_final = IA3_QA_EDITOR_PROMPT.format(
-        linguagem=architect_output.get('LINGUAGEM'),
-        framework=architect_output.get('FRAMEWORK')
-    )
+    # AQUI ESTAVA O ERRO: Usamos concatenação simples para não quebrar as chaves do seu prompt
+    prompt_final = f"""
+    {IA3_QA_EDITOR_PROMPT}
     
-    prompt_final += f"\n\n--- INPUTS DE TRABALHO ---\n"
-    prompt_final += f"RASCUNHO DO ARQUITETO: {architect_output['CONTEUDO_BRUTO']}\n"
-    prompt_final += f"CRÍTICAS DO AUDITOR: {auditor_output}\n"
+    --- DADOS PARA FORMATAÇÃO FINAL ---
+    Linguagem: {architect_output['LINGUAGEM']}
+    Framework: {architect_output['FRAMEWORK']}
+    Rascunho: {architect_output['CONTEUDO_BRUTO']}
+    Críticas: {auditor_output}
+    """
 
     response = client.chat.completions.create(
         messages=[{"role": "system", "content": prompt_final}],
@@ -103,22 +102,18 @@ def run_ia3_qa_editor(architect_output, auditor_output):
 # ==========================================
 def process_full_qa_flow(funcao, detalhes, linguagem=None, framework=None, status_callback=None):
     try:
-        # Passo 1: Architect
-        if status_callback: 
-            status_callback(f"Gerando rascunho em {linguagem}...")
+        # Architect
+        if status_callback: status_callback(f"Gerando em {linguagem}...")
         rascunho = run_ia1_qa_architect(funcao, detalhes, linguagem, framework)
 
-        # Passo 2: Auditor
-        if status_callback: 
-            status_callback("Auditando conteúdo técnico...")
+        # Auditor
+        if status_callback: status_callback("Validando BDD e Stack...")
         criticas = run_ia2_qa_auditor(rascunho)
 
-        # Passo 3: Editor
-        if status_callback: 
-            status_callback("Formatando e polindo resposta...")
-        resultado_final = run_ia3_qa_editor(rascunho, criticas)
-
-        return resultado_final
+        # Editor
+        if status_callback: status_callback("Limpando resposta...")
+        return run_ia3_qa_editor(rascunho, criticas)
 
     except Exception as e:
+        # Agora o erro vai aparecer detalhado aqui se algo falhar
         return f"❌ Erro no processamento de QA: {str(e)}"
